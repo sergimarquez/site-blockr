@@ -1,0 +1,24 @@
+{
+  "name": "site-blockr",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sergimarquez/site-blockr.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sergimarquez/site-blockr/issues"
+  },
+  "homepage": "https://github.com/sergimarquez/site-blockr#readme",
+  "devDependencies": {
+    "@types/chrome": "0.0.326",
+    "typescript": "^5.8.3"
+  }
+}
