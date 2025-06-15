@@ -57,41 +57,6 @@ chrome.storage.onChanged.addListener((changes) => {
   }
 });
 
-// Check schedule on startup and every minute
-function checkSchedule() {
-  chrome.storage.local.get(['blockedSites'], (result) => {
-    const data = result.blockedSites as BlockedSites;
-    if (data.schedule) {
-      const now = new Date();
-      const currentDay = now.getDay();
-      const currentTime = now.getHours() * 60 + now.getMinutes();
-      
-      const [startHour, startMinute] = data.schedule.startTime.split(':').map(Number);
-      const [endHour, endMinute] = data.schedule.endTime.split(':').map(Number);
-      const startTime = startHour * 60 + startMinute;
-      const endTime = endHour * 60 + endMinute;
-
-      const isWithinSchedule = 
-        data.schedule.days.includes(currentDay) &&
-        currentTime >= startTime &&
-        currentTime < endTime;
-
-      if (isWithinSchedule !== data.isBlockingEnabled) {
-        chrome.storage.local.set({
-          blockedSites: {
-            ...data,
-            isBlockingEnabled: isWithinSchedule
-          }
-        });
-      }
-    }
-  });
-}
-
-// Check schedule immediately and then every minute
-checkSchedule();
-setInterval(checkSchedule, 60000);
-
 async function updateRules(state: BlockedSites) {
   try {
     console.log('Updating rules for state:', state);

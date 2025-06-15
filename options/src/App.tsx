@@ -12,25 +12,13 @@ interface BlockedSites {
     endTime?: number;
     duration?: number;
   };
-  schedule?: {
-    startTime: string;
-    endTime: string;
-    days: number[];
-  };
 }
-
-const defaultSchedule = {
-  startTime: '09:00',
-  endTime: '17:00',
-  days: [1, 2, 3, 4, 5] // Monday to Friday
-};
 
 function App() {
   const [sites, setSites] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [isBlockingEnabled, setIsBlockingEnabled] = useState(true);
   const [focusMode, setFocusMode] = useState<BlockedSites['focusMode']>({ isActive: false });
-  const [schedule, setSchedule] = useState<BlockedSites['schedule']>(defaultSchedule);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem(THEME_KEY);
@@ -44,7 +32,6 @@ function App() {
       setSites(data.sites || []);
       setIsBlockingEnabled(data.isBlockingEnabled ?? true);
       setFocusMode(data.focusMode || { isActive: false });
-      setSchedule(data.schedule || { startTime: '', endTime: '', days: [] });
     });
   }, []);
 
@@ -85,7 +72,6 @@ function App() {
         sites: [],
         isBlockingEnabled: true,
         focusMode: { isActive: false },
-        schedule: defaultSchedule
       };
       const newData = { ...currentData, ...updates };
       chrome.storage.local.set({ [STORAGE_KEY]: newData });
@@ -116,13 +102,6 @@ function App() {
     setFocusMode(newFocusMode);
     updateStorage({ focusMode: newFocusMode });
     toast.success('Focus mode stopped');
-  };
-
-  const updateSchedule = (updates: Partial<BlockedSites['schedule']>) => {
-    if (!schedule) return;
-    const newSchedule = { ...schedule, ...updates };
-    setSchedule(newSchedule);
-    updateStorage({ schedule: newSchedule });
   };
 
   const addSite = () => {
@@ -242,52 +221,6 @@ function App() {
             </button>
           </div>
         )}
-      </div>
-
-      {/* Schedule */}
-      <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-        <h2 className="font-medium mb-2">Schedule</h2>
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <label className="w-20">Start:</label>
-            <input
-              type="time"
-              value={schedule?.startTime}
-              onChange={(e) => updateSchedule({ startTime: e.target.value })}
-              className="flex-1 p-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            />
-          </div>
-          <div className="flex items-center space-x-2">
-            <label className="w-20">End:</label>
-            <input
-              type="time"
-              value={schedule?.endTime}
-              onChange={(e) => updateSchedule({ endTime: e.target.value })}
-              className="flex-1 p-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            />
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
-              <button
-                key={day}
-                onClick={() => {
-                  const days = schedule?.days || [];
-                  const newDays = days.includes(index)
-                    ? days.filter(d => d !== index)
-                    : [...days, index].sort();
-                  updateSchedule({ days: newDays });
-                }}
-                className={`px-2 py-1 rounded transition-colors ${
-                  (schedule?.days || []).includes(index)
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                {day}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Site Management */}
