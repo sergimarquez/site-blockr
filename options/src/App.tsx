@@ -10,11 +10,6 @@ interface BlockedSites {
     category: string;
   }>;
   isBlockingEnabled: boolean;
-  focusMode?: {
-    isActive: boolean;
-    endTime?: number;
-    duration?: number;
-  };
 }
 
 const CATEGORIES = [
@@ -31,8 +26,6 @@ function App() {
   const [sites, setSites] = useState<BlockedSites['sites']>([]);
   const [input, setInput] = useState('');
   const [isBlockingEnabled, setIsBlockingEnabled] = useState(true);
-  const [focusMode, setFocusMode] = useState<BlockedSites['focusMode']>({ isActive: false });
-  const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem(THEME_KEY);
     return savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -108,7 +101,6 @@ function App() {
           const data = result.blockedSites || { sites: [], isBlockingEnabled: true };
           setSites(data.sites || []);
           setIsBlockingEnabled(data.isBlockingEnabled ?? true);
-          setFocusMode(data.focusMode || { isActive: false });
           
           // If no data exists, initialize storage
           if (!result.blockedSites) {
@@ -121,25 +113,6 @@ function App() {
       () => window.location.reload()
     );
   }, []);
-
-  // Update time left for focus mode
-  useEffect(() => {
-    if (focusMode?.isActive && focusMode.endTime) {
-      const updateTimeLeft = () => {
-        const remaining = focusMode.endTime! - Date.now();
-        if (remaining > 0) {
-          setTimeLeft(remaining);
-        } else {
-          setTimeLeft(null);
-          setFocusMode({ isActive: false });
-        }
-      };
-
-      updateTimeLeft();
-      const interval = setInterval(updateTimeLeft, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [focusMode]);
 
   // Handle theme changes
   useEffect(() => {
@@ -163,8 +136,7 @@ function App() {
           }
           const currentData = result[STORAGE_KEY] as BlockedSites || {
             sites: [],
-            isBlockingEnabled: true,
-            focusMode: { isActive: false }
+            isBlockingEnabled: true
           };
           const newData = { ...currentData, ...updates };
           chrome.storage.local.set({ [STORAGE_KEY]: newData }, () => {
@@ -186,31 +158,6 @@ function App() {
     setIsBlockingEnabled(newState);
     updateStorage({ isBlockingEnabled: newState }, () => {
       toast.success(`Blocking ${newState ? 'enabled' : 'disabled'}`);
-    });
-  };
-
-  const startFocusMode = (minutes: number) => {
-    const endTime = Date.now() + minutes * 60 * 1000;
-    const newFocusMode = {
-      isActive: true,
-      endTime,
-      duration: minutes
-    };
-    setFocusMode(newFocusMode);
-    updateStorage({ focusMode: newFocusMode, isBlockingEnabled: true }, () => {
-      toast.success(`Focus mode started for ${minutes} minutes`);
-    });
-  };
-
-  const stopFocusMode = () => {
-    const newFocusMode = { isActive: false };
-    setFocusMode(newFocusMode);
-    setIsBlockingEnabled(false);
-    updateStorage({ 
-      focusMode: newFocusMode,
-      isBlockingEnabled: false 
-    }, () => {
-      toast.success('Focus mode stopped');
     });
   };
 
@@ -258,12 +205,6 @@ function App() {
     acc[category.id] = sites.filter(site => site.category === category.id);
     return acc;
   }, {} as Record<string, BlockedSites['sites']>);
-
-  const formatTimeLeft = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -329,15 +270,13 @@ function App() {
             <div className="text-2xl font-bold">{sites.filter(site => site.url.trim()).length}</div>
           </div>
           <div className={`p-2 rounded shadow ${
-            focusMode?.isActive 
-              ? 'bg-emerald-50 dark:bg-emerald-900/20' 
-              : isBlockingEnabled 
-                ? 'bg-green-50 dark:bg-green-900/20' 
-                : 'bg-slate-50 dark:bg-slate-900/20'
+            isBlockingEnabled 
+              ? 'bg-green-50 dark:bg-green-900/20' 
+              : 'bg-slate-50 dark:bg-slate-900/20'
           }`}>
             <div className="text-sm text-gray-600 dark:text-gray-300">Status</div>
             <div className="text-2xl font-bold">
-              {focusMode?.isActive ? 'Focus Mode' : isBlockingEnabled ? 'Active' : 'Disabled'}
+              {isBlockingEnabled ? 'Active' : 'Disabled'}
             </div>
           </div>
         </div>
@@ -348,18 +287,15 @@ function App() {
         <span className="font-medium">Blocking Enabled</span>
         <button
           onClick={toggleBlocking}
-          disabled={focusMode?.isActive}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-            focusMode?.isActive 
-              ? 'bg-blue-600 cursor-not-allowed opacity-75' 
-              : isBlockingEnabled 
-                ? 'bg-blue-600' 
-                : 'bg-gray-200 dark:bg-gray-700'
+            isBlockingEnabled 
+              ? 'bg-blue-600' 
+              : 'bg-gray-200 dark:bg-gray-700'
           }`}
         >
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-all duration-300 ease-in-out ${
-              (focusMode?.isActive || isBlockingEnabled) ? 'translate-x-6' : 'translate-x-1'
+              isBlockingEnabled ? 'translate-x-6' : 'translate-x-1'
             }`}
           />
         </button>
@@ -421,44 +357,6 @@ function App() {
             </div>
           );
         })}
-      </div>
-
-      {/* Focus Mode */}
-      <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-        <h2 className="font-medium mb-2">Focus Mode</h2>
-        {focusMode?.isActive ? (
-          <div className="space-y-2">
-            <div className="text-center">
-              <div className="text-2xl font-bold animate-pulse">{formatTimeLeft(timeLeft!)}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">remaining</div>
-            </div>
-            <button
-              onClick={() => {
-                stopFocusMode();
-                setIsBlockingEnabled(false);
-                updateStorage({ isBlockingEnabled: false });
-              }}
-              className="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-all duration-300 ease-in-out transform hover:scale-105"
-            >
-              Stop Focus Mode
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => startFocusMode(25)}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-all duration-300 ease-in-out transform hover:scale-105"
-            >
-              Focus 25m
-            </button>
-            <button
-              onClick={() => startFocusMode(50)}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-all duration-300 ease-in-out transform hover:scale-105"
-            >
-              Focus 50m
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Daily Quote at the bottom */}
