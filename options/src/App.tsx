@@ -25,6 +25,7 @@ type CategoryId = typeof CATEGORIES[number]['id'];
 function App() {
   const [sites, setSites] = useState<BlockedSites['sites']>([]);
   const [input, setInput] = useState('');
+  const [inputError, setInputError] = useState('');
   const [isBlockingEnabled, setIsBlockingEnabled] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem(THEME_KEY);
@@ -161,6 +162,22 @@ function App() {
     });
   };
 
+  // Clean and validate URL
+  const cleanUrl = (url: string): string => {
+    return url
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .replace(/\/$/, '')
+      .toLowerCase();
+  };
+
+  const isValidUrl = (url: string): boolean => {
+    const cleanedUrl = cleanUrl(url);
+    // Basic domain validation
+    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.([a-zA-Z]{2,}|[a-zA-Z]{2,}\.[a-zA-Z]{2,})$/;
+    return domainRegex.test(cleanedUrl) && cleanedUrl.length > 0;
+  };
+
   function guessCategory(url: string): CategoryId {
     const domain = url.toLowerCase();
     if (/(facebook|twitter|instagram|tiktok|linkedin|reddit)/.test(domain)) return 'social';
@@ -172,15 +189,30 @@ function App() {
 
   const addSite = () => {
     if (!input.trim()) return;
+    
+    const cleanedUrl = cleanUrl(input.trim());
+    
+    if (!isValidUrl(input.trim())) {
+      setInputError('Please enter a valid website URL');
+      return;
+    }
+
+    // Check if site already exists
+    if (sites.some(site => site.url === cleanedUrl)) {
+      setInputError('This site is already blocked');
+      return;
+    }
+
     const newSite = {
-      url: input.trim(),
-      category: guessCategory(input.trim())
+      url: cleanedUrl,
+      category: guessCategory(cleanedUrl)
     };
     const newSites = [...sites, newSite];
     setSites(newSites);
     updateStorage({ sites: newSites }, () => {
       setInput('');
-      toast.success(`Added ${input.trim()} to blocked sites`);
+      setInputError('');
+      toast.success(`Added ${cleanedUrl} to blocked sites`);
     });
   };
 
@@ -209,6 +241,12 @@ function App() {
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
     toast.success(`Switched to ${!isDarkMode ? 'dark' : 'light'} mode`);
+  };
+
+  // Clear input error when user types
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+    if (inputError) setInputError('');
   };
 
   return (
@@ -252,7 +290,7 @@ function App() {
       
       {/* Header with theme toggle */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">SiteBlockr Dashboard</h1>
+        <h1 className="text-xl font-bold">SiteBlockr</h1>
         <button
           onClick={toggleTheme}
           className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-2xl hover:scale-110 transform duration-200"
@@ -304,21 +342,39 @@ function App() {
       {/* Site Management */}
       <div className="mb-4">
         <div className="flex gap-2 mb-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addSite()}
-            placeholder="Enter site URL"
-            className="flex-1 p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          />
+          <div className="flex-1">
+            <input
+              type="text"
+              value={input}
+              onChange={handleInputChange}
+              onKeyPress={(e) => e.key === 'Enter' && addSite()}
+              placeholder="Enter site URL (e.g., facebook.com)"
+              className={`w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors ${
+                inputError ? 'border-red-500 dark:border-red-400' : ''
+              }`}
+            />
+            {inputError && (
+              <p className="text-red-500 dark:text-red-400 text-sm mt-1 animate-fade-in">
+                {inputError}
+              </p>
+            )}
+          </div>
           <button
             onClick={addSite}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
           >
             Add
           </button>
         </div>
+
+        {/* Empty State */}
+        {sites.length === 0 && (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400 animate-fade-in">
+            <div className="text-4xl mb-2">🌐</div>
+            <p className="text-sm">No sites blocked yet</p>
+            <p className="text-xs mt-1">Add a website above to get started</p>
+          </div>
+        )}
 
         {/* Sites by Category */}
         {CATEGORIES.map(category => {
@@ -326,14 +382,14 @@ function App() {
           if (categorySites.length === 0) return null;
 
           return (
-            <div key={category.id} className="mb-4">
+            <div key={category.id} className="mb-4 animate-fade-in">
               <div className="flex items-center justify-between mb-2">
                 <h3 className={`font-medium ${category.color} text-white px-2 py-1 rounded`}>
                   {category.name} ({categorySites.length})
                 </h3>
                 <button
                   onClick={() => toggleCategory(category.id)}
-                  className="text-sm text-red-600 hover:text-red-700"
+                  className="text-sm text-red-600 hover:text-red-700 transition-colors"
                 >
                   Remove All
                 </button>
@@ -342,12 +398,12 @@ function App() {
                 {categorySites.map((site) => (
                   <div
                     key={site.url}
-                    className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded shadow"
+                    className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded shadow animate-fade-in transition-all duration-200 hover:shadow-md"
                   >
                     <span className="truncate">{site.url}</span>
                     <button
                       onClick={() => removeSite(site)}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-red-600 hover:text-red-700 transition-colors"
                     >
                       Remove
                     </button>
