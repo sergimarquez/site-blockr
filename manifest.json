@@ -3,17 +3,23 @@
     "name": "SiteBlockr",
     "version": "1.0",
     "description": "Block distracting websites to stay focused.",
-    "permissions": ["storage", "webRequest", "webRequestBlocking", "<all_urls>"],
+    "permissions": [
+        "storage",
+        "declarativeNetRequest"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
     "background": {
-      "service_worker": "dist/background.js"
+        "service_worker": "background.js"
     },
     "options_page": "options/index.html",
     "icons": {
-      "48": "options/public/icon48.png",
-      "128": "options/public/icon128.png"
+        "48": "icon48.png",
+        "128": "icon128.png"
     },
     "action": {
-      "default_title": "SiteBlockr"
+        "default_title": "SiteBlockr"
     }
-  }
+}
   

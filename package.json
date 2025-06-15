@@ -4,6 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "tsc && cd options && npm run build",
+    "build:background": "tsc background.ts --outDir dist",
+    "build:copy": "cp manifest.json dist/ && cp icon*.png dist/",
+    "build:all": "npm run build:background && cd options && npm run build && cd .. && npm run build:copy",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -18,7 +22,8 @@
   },
   "homepage": "https://github.com/sergimarquez/site-blockr#readme",
   "devDependencies": {
-    "@types/chrome": "0.0.326",
+    "@types/chrome": "^0.0.260",
+    "@types/node": "^24.0.0",
     "typescript": "^5.8.3"
   }
 }
