@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import './App.css';
 
 const STORAGE_KEY = 'blockedSites';
 const BLOCKING_ENABLED_KEY = 'isBlockingEnabled';
@@ -42,17 +41,23 @@ function App() {
   };
 
   return (
-    <div className="app-container">
-      <h1>SiteBlockr Dashboard</h1>
+    <div className="p-4 max-w-md mx-auto">
+      <h1 className="text-xl font-bold mb-4">SiteBlockr Dashboard</h1>
       
       {/* Blocking Toggle */}
-      <div className="toggle-container">
-        <span>Blocking Enabled</span>
+      <div className="flex items-center justify-between mb-4 p-3 bg-gray-100 rounded">
+        <span className="font-medium">Blocking Enabled</span>
         <button
           onClick={toggleBlocking}
-          className={`toggle-button ${isBlockingEnabled ? 'enabled' : 'disabled'}`}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+            isBlockingEnabled ? 'bg-blue-600' : 'bg-gray-300'
+          }`}
         >
-          <span className="toggle-slider" />
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              isBlockingEnabled ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
         </button>
       </div>
 
@@ -60,16 +65,18 @@ function App() {
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="e.g. twitter.com"
-        className="site-input"
+        className="w-full p-2 border rounded mb-2"
       />
-      <button onClick={addSite} className="add-button">
+      <button onClick={addSite} className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
         Add Site
       </button>
-      <ul className="site-list">
+      <ul className="mt-4 space-y-2">
         {sites.map(site => (
-          <li key={site} className="site-item">
+          <li key={site} className="flex justify-between items-center p-2 border-b">
             <span>{site}</span>
-            <button onClick={() => removeSite(site)} className="remove-button">Remove</button>
+            <button onClick={() => removeSite(site)} className="text-red-500 hover:text-red-700">
+              Remove
+            </button>
           </li>
         ))}
       </ul>
