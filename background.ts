@@ -1,50 +1,109 @@
 /// <reference types="chrome"/>
 
 interface BlockedSites {
-  blockedSites: string[];
+  sites: string[];
+  isBlockingEnabled: boolean;
+  focusMode?: {
+    isActive: boolean;
+    endTime?: number;
+    duration?: number;
+  };
+  schedule?: {
+    startTime: string;
+    endTime: string;
+    days: number[];
+  };
 }
 
-let blockedSites: string[] = [];
-let isBlockingEnabled: boolean = true; // Default to enabled
+let currentState: BlockedSites = {
+  sites: [],
+  isBlockingEnabled: true
+};
 
-// Load initial state
-chrome.storage.local.get(['blockedSites', 'isBlockingEnabled'], (result) => {
-  blockedSites = result.blockedSites || [];
-  isBlockingEnabled = result.isBlockingEnabled ?? true; // Default to true if not set
-  console.log('Loaded state:', { blockedSites, isBlockingEnabled });
-  updateRules();
+// Load initial blocked sites from chrome.storage
+chrome.storage.local.get(['blockedSites'], (result) => {
+  currentState = result.blockedSites as BlockedSites || { sites: [], isBlockingEnabled: true };
+  updateRules(currentState);
 });
 
-// Listen for changes in blocked sites and blocking state
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local') {
-    if (changes.blockedSites) {
-      blockedSites = changes.blockedSites.newValue || [];
-      console.log('Updated blocked sites:', blockedSites);
+// Listen for changes in blocked sites
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.blockedSites) {
+    currentState = changes.blockedSites.newValue as BlockedSites;
+    updateRules(currentState);
+
+    // Handle focus mode timer
+    if (currentState.focusMode?.isActive && currentState.focusMode.endTime) {
+      const timeLeft = currentState.focusMode.endTime - Date.now();
+      if (timeLeft > 0) {
+        setTimeout(() => {
+          // Disable focus mode when timer ends
+          chrome.storage.local.get(['blockedSites'], (result) => {
+            const currentData = result.blockedSites as BlockedSites;
+            chrome.storage.local.set({
+              blockedSites: {
+                ...currentData,
+                focusMode: { isActive: false }
+              }
+            });
+          });
+        }, timeLeft);
+      }
     }
-    if (changes.isBlockingEnabled) {
-      isBlockingEnabled = changes.isBlockingEnabled.newValue;
-      console.log('Updated blocking state:', isBlockingEnabled);
-    }
-    updateRules();
   }
 });
 
-// Update rules when blocked sites change
-async function updateRules() {
-  // Remove all existing rules
+// Check schedule on startup and every minute
+function checkSchedule() {
+  chrome.storage.local.get(['blockedSites'], (result) => {
+    const data = result.blockedSites as BlockedSites;
+    if (data.schedule) {
+      const now = new Date();
+      const currentDay = now.getDay();
+      const currentTime = now.getHours() * 60 + now.getMinutes();
+      
+      const [startHour, startMinute] = data.schedule.startTime.split(':').map(Number);
+      const [endHour, endMinute] = data.schedule.endTime.split(':').map(Number);
+      const startTime = startHour * 60 + startMinute;
+      const endTime = endHour * 60 + endMinute;
+
+      const isWithinSchedule = 
+        data.schedule.days.includes(currentDay) &&
+        currentTime >= startTime &&
+        currentTime < endTime;
+
+      if (isWithinSchedule !== data.isBlockingEnabled) {
+        chrome.storage.local.set({
+          blockedSites: {
+            ...data,
+            isBlockingEnabled: isWithinSchedule
+          }
+        });
+      }
+    }
+  });
+}
+
+// Check schedule immediately and then every minute
+checkSchedule();
+setInterval(checkSchedule, 60000);
+
+async function updateRules(state: BlockedSites) {
+  // Remove existing rules
+  const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
+  const ruleIds = existingRules.map(rule => rule.id);
   await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: blockedSites.map((_, index) => index + 1)
+    removeRuleIds: ruleIds
   });
 
-  // Only add rules if blocking is enabled
-  if (isBlockingEnabled) {
-    const rules = blockedSites.map((site, index) => ({
+  // Only add new rules if blocking is enabled
+  if (state.isBlockingEnabled && state.sites.length > 0) {
+    const rules = state.sites.map((site: string, index: number) => ({
       id: index + 1,
       priority: 1,
       action: { type: 'block' as const },
       condition: {
-        urlFilter: site,
+        urlFilter: `*://*.${site}/*`,
         resourceTypes: ['main_frame' as const]
       }
     }));
@@ -52,30 +111,25 @@ async function updateRules() {
     await chrome.declarativeNetRequest.updateDynamicRules({
       addRules: rules
     });
-
-    console.log('Updated rules:', rules);
-  } else {
-    console.log('Blocking is disabled, no rules added');
   }
 }
 
-// Check if URL matches any blocked site
-function isUrlBlocked(url: string): boolean {
-  if (!isBlockingEnabled) return false;
-  
-  try {
-    const urlObj = new URL(url);
-    return blockedSites.some(site => {
-      try {
-        const siteUrl = new URL(site);
-        return urlObj.hostname.includes(siteUrl.hostname);
-      } catch {
-        // If site is not a valid URL, check if it's a substring
-        return url.includes(site);
-      }
-    });
-  } catch {
-    // If URL parsing fails, fallback to simple string matching
-    return blockedSites.some(site => url.includes(site));
-  }
+// Helper functions for checking if a URL should be blocked
+function shouldBlockUrl(url: string): boolean {
+  if (!currentState.isBlockingEnabled) return false;
+
+  // Check if URL matches any blocked site
+  return currentState.sites.some(site => url.includes(site));
 }
+
+// Listen for web requests
+chrome.webRequest.onBeforeRequest.addListener(
+  (details) => {
+    if (shouldBlockUrl(details.url)) {
+      return { cancel: true };
+    }
+    return { cancel: false };
+  },
+  { urls: ["<all_urls>"] },
+  ["blocking"]
+);
