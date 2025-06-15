@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
 
 const STORAGE_KEY = 'blockedSites';
 
@@ -79,6 +80,7 @@ function App() {
     const newState = !isBlockingEnabled;
     setIsBlockingEnabled(newState);
     updateStorage({ isBlockingEnabled: newState });
+    toast.success(`Blocking ${newState ? 'enabled' : 'disabled'}`);
   };
 
   const startFocusMode = (minutes: number) => {
@@ -90,12 +92,14 @@ function App() {
     };
     setFocusMode(newFocusMode);
     updateStorage({ focusMode: newFocusMode, isBlockingEnabled: true });
+    toast.success(`Focus mode started for ${minutes} minutes`);
   };
 
   const stopFocusMode = () => {
     const newFocusMode = { isActive: false };
     setFocusMode(newFocusMode);
     updateStorage({ focusMode: newFocusMode });
+    toast.success('Focus mode stopped');
   };
 
   const updateSchedule = (updates: Partial<BlockedSites['schedule']>) => {
@@ -111,12 +115,14 @@ function App() {
     setSites(newSites);
     updateStorage({ sites: newSites });
     setInput('');
+    toast.success(`Added ${input.trim()} to blocked sites`);
   };
 
   const removeSite = (site: string) => {
     const newSites = sites.filter(s => s !== site);
     setSites(newSites);
     updateStorage({ sites: newSites });
+    toast.success(`Removed ${site} from blocked sites`);
   };
 
   const formatTimeLeft = (ms: number) => {
@@ -127,8 +133,26 @@ function App() {
 
   return (
     <div className="p-4 max-w-md mx-auto">
+      <Toaster position="top-right" />
       <h1 className="text-xl font-bold mb-4">SiteBlockr Dashboard</h1>
       
+      {/* Statistics Panel */}
+      <div className="mb-4 p-3 bg-gray-100 rounded">
+        <h2 className="font-medium mb-2">Statistics</h2>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="p-2 bg-white rounded shadow">
+            <div className="text-sm text-gray-600">Blocked Sites</div>
+            <div className="text-2xl font-bold">{sites.length}</div>
+          </div>
+          <div className="p-2 bg-white rounded shadow">
+            <div className="text-sm text-gray-600">Status</div>
+            <div className="text-2xl font-bold">
+              {focusMode?.isActive ? 'Focus Mode' : isBlockingEnabled ? 'Active' : 'Disabled'}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Blocking Toggle */}
       <div className="flex items-center justify-between mb-4 p-3 bg-gray-100 rounded">
         <span className="font-medium">Blocking Enabled</span>
