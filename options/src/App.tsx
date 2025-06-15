@@ -40,6 +40,37 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryAction, setRetryAction] = useState<(() => void) | null>(null);
+  const [quote, setQuote] = useState<{ content: string; author: string } | null>(null);
+
+  // Fetch quote on component mount
+  useEffect(() => {
+    const fetchQuote = async () => {
+      try {
+        const response = await fetch('https://zenquotes.io/api/random');
+        const data = await response.json();
+        console.log('ZenQuotes API response:', data); // Debug log
+        if (Array.isArray(data) && data.length > 0) {
+          setQuote({
+            content: data[0].q,
+            author: data[0].a
+          });
+        } else {
+          setQuote({
+            content: "The key is not to prioritize what's on your schedule, but to schedule your priorities.",
+            author: "Stephen Covey"
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching quote:', error); // Debug log
+        setQuote({
+          content: "The key is not to prioritize what's on your schedule, but to schedule your priorities.",
+          author: "Stephen Covey"
+        });
+      }
+    };
+
+    fetchQuote();
+  }, []);
 
   // Helper to handle async storage with loading/error/retry
   const withLoading = async (fn: () => Promise<void>, retryFn?: () => void) => {
@@ -425,6 +456,14 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* Daily Quote at the bottom */}
+      {quote && (
+        <div className="mt-8 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700">
+          <p className="text-sm italic text-gray-600 dark:text-gray-300 mb-1">"{quote.content}"</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-right">— {quote.author}</p>
+        </div>
+      )}
 
       {/* Copyright */}
       <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
