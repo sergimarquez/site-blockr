@@ -1,7 +1,10 @@
 /// <reference types="chrome"/>
 
 interface BlockedSites {
-  sites: string[];
+  sites: Array<{
+    url: string;
+    category: string;
+  }>;
   isBlockingEnabled: boolean;
   focusMode?: {
     isActive: boolean;
@@ -23,7 +26,13 @@ let currentState: BlockedSites = {
 // Load initial blocked sites from chrome.storage
 chrome.storage.local.get(['blockedSites'], (result) => {
   console.log('Initial storage load:', result);
-  currentState = result.blockedSites as BlockedSites || { sites: [], isBlockingEnabled: true };
+  if (result.blockedSites) {
+    currentState = result.blockedSites as BlockedSites;
+  } else {
+    currentState = { sites: [], isBlockingEnabled: true };
+    // Initialize storage with empty state
+    chrome.storage.local.set({ blockedSites: currentState });
+  }
   console.log('Current state after load:', currentState);
   updateRules(currentState);
 });
@@ -73,29 +82,15 @@ async function updateRules(state: BlockedSites) {
 
     // Only add new rules if blocking is enabled
     if (state.isBlockingEnabled && state.sites.length > 0) {
-      const rules = state.sites.flatMap((site: string, index: number) => {
-        // Create rules for both http and https
-        return [
-          {
-            id: index * 2 + 1,
-            priority: 1,
-            action: { type: 'block' as const },
-            condition: {
-              urlFilter: `*://*.${site}/*`,
-              resourceTypes: ['main_frame' as const]
-            }
-          },
-          {
-            id: index * 2 + 2,
-            priority: 1,
-            action: { type: 'block' as const },
-            condition: {
-              urlFilter: `*://${site}/*`,
-              resourceTypes: ['main_frame' as const]
-            }
-          }
-        ];
-      });
+      const rules = state.sites.map((site, index) => ({
+        id: index + 1,
+        priority: 1,
+        action: { type: 'block' as const },
+        condition: {
+          urlFilter: `*://*.${site.url}/*`,
+          resourceTypes: ['main_frame' as const]
+        }
+      }));
 
       console.log('Adding new rules:', rules);
       await chrome.declarativeNetRequest.updateDynamicRules({
