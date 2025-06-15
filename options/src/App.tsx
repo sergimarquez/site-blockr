@@ -43,13 +43,23 @@ function App() {
 
   // Helper to handle async storage with loading/error/retry
   const withLoading = async (fn: () => Promise<void>, retryFn?: () => void) => {
-    setLoading(true);
+    // Only show loading for operations that might take longer
+    const shouldShowLoading = fn.toString().includes('getDynamicRules') || 
+                            fn.toString().includes('updateDynamicRules');
+    
+    if (shouldShowLoading) {
+      setLoading(true);
+    }
     setError(null);
     try {
       await fn();
-      setLoading(false);
+      if (shouldShowLoading) {
+        setLoading(false);
+      }
     } catch (e: any) {
-      setLoading(false);
+      if (shouldShowLoading) {
+        setLoading(false);
+      }
       setError(e.message || 'An error occurred');
       setRetryAction(() => retryFn || fn);
     }
@@ -164,7 +174,11 @@ function App() {
   const stopFocusMode = () => {
     const newFocusMode = { isActive: false };
     setFocusMode(newFocusMode);
-    updateStorage({ focusMode: newFocusMode }, () => {
+    setIsBlockingEnabled(false);
+    updateStorage({ 
+      focusMode: newFocusMode,
+      isBlockingEnabled: false 
+    }, () => {
       toast.success('Focus mode stopped');
     });
   };
@@ -239,13 +253,13 @@ function App() {
       />
       {/* Loading Spinner Overlay */}
       {loading && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 transition-opacity duration-200">
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 border-solid"></div>
         </div>
       )}
       {/* Error Message with Retry */}
       {error && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex flex-col items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex flex-col items-center justify-center z-50 transition-opacity duration-200">
           <div className="bg-white dark:bg-gray-800 p-6 rounded shadow text-center">
             <div className="text-red-600 dark:text-red-400 mb-2 font-bold">{error}</div>
             {retryAction && (
@@ -278,13 +292,18 @@ function App() {
 
       {/* Statistics Panel */}
       <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-sm">
-        <h2 className="font-medium mb-2">Statistics</h2>
         <div className="grid grid-cols-2 gap-2">
           <div className="p-2 bg-white dark:bg-gray-700 rounded shadow">
             <div className="text-sm text-gray-600 dark:text-gray-300">Blocked Sites</div>
             <div className="text-2xl font-bold">{sites.filter(site => site.url.trim()).length}</div>
           </div>
-          <div className="p-2 bg-white dark:bg-gray-700 rounded shadow">
+          <div className={`p-2 rounded shadow ${
+            focusMode?.isActive 
+              ? 'bg-emerald-50 dark:bg-emerald-900/20' 
+              : isBlockingEnabled 
+                ? 'bg-green-50 dark:bg-green-900/20' 
+                : 'bg-slate-50 dark:bg-slate-900/20'
+          }`}>
             <div className="text-sm text-gray-600 dark:text-gray-300">Status</div>
             <div className="text-2xl font-bold">
               {focusMode?.isActive ? 'Focus Mode' : isBlockingEnabled ? 'Active' : 'Disabled'}
@@ -298,13 +317,18 @@ function App() {
         <span className="font-medium">Blocking Enabled</span>
         <button
           onClick={toggleBlocking}
+          disabled={focusMode?.isActive}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-            isBlockingEnabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+            focusMode?.isActive 
+              ? 'bg-blue-600 cursor-not-allowed opacity-75' 
+              : isBlockingEnabled 
+                ? 'bg-blue-600' 
+                : 'bg-gray-200 dark:bg-gray-700'
           }`}
         >
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-              isBlockingEnabled ? 'translate-x-6' : 'translate-x-1'
+              (focusMode?.isActive || isBlockingEnabled) ? 'translate-x-6' : 'translate-x-1'
             }`}
           />
         </button>
@@ -400,6 +424,18 @@ function App() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Copyright */}
+      <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+        <a 
+          href="https://sergimarquez.com" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+        >
+          © {new Date().getFullYear()} Sergi Marquez
+        </a>
       </div>
     </div>
   );
