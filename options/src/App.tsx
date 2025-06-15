@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 
 const STORAGE_KEY = 'blockedSites';
+const THEME_KEY = 'theme';
 
 interface BlockedSites {
   sites: string[];
@@ -31,6 +32,10 @@ function App() {
   const [focusMode, setFocusMode] = useState<BlockedSites['focusMode']>({ isActive: false });
   const [schedule, setSchedule] = useState<BlockedSites['schedule']>(defaultSchedule);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    return savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
 
   // Load from chrome.storage
   useEffect(() => {
@@ -61,6 +66,17 @@ function App() {
       return () => clearInterval(interval);
     }
   }, [focusMode]);
+
+  // Handle theme changes
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem(THEME_KEY, 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem(THEME_KEY, 'light');
+    }
+  }, [isDarkMode]);
 
   // Save to chrome.storage
   const updateStorage = (updates: Partial<BlockedSites>) => {
@@ -131,21 +147,46 @@ function App() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+    toast.success(`Switched to ${!isDarkMode ? 'dark' : 'light'} mode`);
+  };
+
   return (
     <div className="p-4 max-w-md mx-auto">
-      <Toaster position="top-right" />
-      <h1 className="text-xl font-bold mb-4">SiteBlockr Dashboard</h1>
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          className: 'dark:bg-gray-800 dark:text-white',
+          style: {
+            background: isDarkMode ? '#1f2937' : '#fff',
+            color: isDarkMode ? '#fff' : '#000',
+          },
+        }}
+      />
       
+      {/* Header with theme toggle */}
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl font-bold">SiteBlockr Dashboard</h1>
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-2xl hover:scale-110 transform duration-200"
+          aria-label="Toggle theme"
+        >
+          {isDarkMode ? '🌞' : '🌙'}
+        </button>
+      </div>
+
       {/* Statistics Panel */}
-      <div className="mb-4 p-3 bg-gray-100 rounded">
+      <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-sm">
         <h2 className="font-medium mb-2">Statistics</h2>
         <div className="grid grid-cols-2 gap-2">
-          <div className="p-2 bg-white rounded shadow">
-            <div className="text-sm text-gray-600">Blocked Sites</div>
+          <div className="p-2 bg-white dark:bg-gray-700 rounded shadow">
+            <div className="text-sm text-gray-600 dark:text-gray-300">Blocked Sites</div>
             <div className="text-2xl font-bold">{sites.length}</div>
           </div>
-          <div className="p-2 bg-white rounded shadow">
-            <div className="text-sm text-gray-600">Status</div>
+          <div className="p-2 bg-white dark:bg-gray-700 rounded shadow">
+            <div className="text-sm text-gray-600 dark:text-gray-300">Status</div>
             <div className="text-2xl font-bold">
               {focusMode?.isActive ? 'Focus Mode' : isBlockingEnabled ? 'Active' : 'Disabled'}
             </div>
@@ -154,12 +195,12 @@ function App() {
       </div>
 
       {/* Blocking Toggle */}
-      <div className="flex items-center justify-between mb-4 p-3 bg-gray-100 rounded">
+      <div className="flex items-center justify-between mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
         <span className="font-medium">Blocking Enabled</span>
         <button
           onClick={toggleBlocking}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-            isBlockingEnabled ? 'bg-blue-600' : 'bg-gray-300'
+            isBlockingEnabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
           }`}
         >
           <span
@@ -171,7 +212,7 @@ function App() {
       </div>
 
       {/* Focus Mode */}
-      <div className="mb-4 p-3 bg-gray-100 rounded">
+      <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
         <h2 className="font-medium mb-2">Focus Mode</h2>
         {focusMode?.isActive ? (
           <div className="space-y-2">
@@ -180,7 +221,7 @@ function App() {
             </div>
             <button
               onClick={stopFocusMode}
-              className="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+              className="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
             >
               Stop Focus Mode
             </button>
@@ -189,13 +230,13 @@ function App() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => startFocusMode(25)}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
             >
               Focus 25m
             </button>
             <button
               onClick={() => startFocusMode(50)}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
             >
               Focus 50m
             </button>
@@ -204,7 +245,7 @@ function App() {
       </div>
 
       {/* Schedule */}
-      <div className="mb-4 p-3 bg-gray-100 rounded">
+      <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
         <h2 className="font-medium mb-2">Schedule</h2>
         <div className="space-y-2">
           <div className="flex items-center space-x-2">
@@ -213,7 +254,7 @@ function App() {
               type="time"
               value={schedule?.startTime}
               onChange={(e) => updateSchedule({ startTime: e.target.value })}
-              className="flex-1 p-1 border rounded"
+              className="flex-1 p-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
           </div>
           <div className="flex items-center space-x-2">
@@ -222,7 +263,7 @@ function App() {
               type="time"
               value={schedule?.endTime}
               onChange={(e) => updateSchedule({ endTime: e.target.value })}
-              className="flex-1 p-1 border rounded"
+              className="flex-1 p-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
           </div>
           <div className="flex flex-wrap gap-1">
@@ -236,10 +277,10 @@ function App() {
                     : [...days, index].sort();
                   updateSchedule({ days: newDays });
                 }}
-                className={`px-2 py-1 rounded ${
+                className={`px-2 py-1 rounded transition-colors ${
                   (schedule?.days || []).includes(index)
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                 }`}
               >
                 {day}
@@ -254,19 +295,25 @@ function App() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="e.g. twitter.com"
-          className="w-full p-2 border rounded mb-2"
+          placeholder="Enter site to block (e.g., facebook.com)"
+          className="w-full p-2 border rounded mb-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
         />
-        <button onClick={addSite} className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        <button 
+          onClick={addSite} 
+          className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+        >
           Add Site
         </button>
       </div>
 
       <ul className="space-y-2">
         {(sites || []).map(site => (
-          <li key={site} className="flex justify-between items-center p-2 border-b">
+          <li key={site} className="flex justify-between items-center p-2 border-b dark:border-gray-700">
             <span>{site}</span>
-            <button onClick={() => removeSite(site)} className="text-red-500 hover:text-red-700">
+            <button 
+              onClick={() => removeSite(site)} 
+              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+            >
               Remove
             </button>
           </li>
