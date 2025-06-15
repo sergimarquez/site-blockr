@@ -22,14 +22,18 @@ let currentState: BlockedSites = {
 
 // Load initial blocked sites from chrome.storage
 chrome.storage.local.get(['blockedSites'], (result) => {
+  console.log('Initial storage load:', result);
   currentState = result.blockedSites as BlockedSites || { sites: [], isBlockingEnabled: true };
+  console.log('Current state after load:', currentState);
   updateRules(currentState);
 });
 
 // Listen for changes in blocked sites
 chrome.storage.onChanged.addListener((changes) => {
+  console.log('Storage changed:', changes);
   if (changes.blockedSites) {
     currentState = changes.blockedSites.newValue as BlockedSites;
+    console.log('New state:', currentState);
     updateRules(currentState);
 
     // Handle focus mode timer
@@ -89,47 +93,54 @@ checkSchedule();
 setInterval(checkSchedule, 60000);
 
 async function updateRules(state: BlockedSites) {
-  // Remove existing rules
-  const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
-  const ruleIds = existingRules.map(rule => rule.id);
-  await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: ruleIds
-  });
-
-  // Only add new rules if blocking is enabled
-  if (state.isBlockingEnabled && state.sites.length > 0) {
-    const rules = state.sites.map((site: string, index: number) => ({
-      id: index + 1,
-      priority: 1,
-      action: { type: 'block' as const },
-      condition: {
-        urlFilter: `*://*.${site}/*`,
-        resourceTypes: ['main_frame' as const]
-      }
-    }));
-
+  try {
+    console.log('Updating rules for state:', state);
+    
+    // Remove existing rules
+    const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
+    console.log('Existing rules:', existingRules);
+    
+    const ruleIds = existingRules.map(rule => rule.id);
     await chrome.declarativeNetRequest.updateDynamicRules({
-      addRules: rules
+      removeRuleIds: ruleIds
     });
+    console.log('Removed existing rules');
+
+    // Only add new rules if blocking is enabled
+    if (state.isBlockingEnabled && state.sites.length > 0) {
+      const rules = state.sites.flatMap((site: string, index: number) => {
+        // Create rules for both http and https
+        return [
+          {
+            id: index * 2 + 1,
+            priority: 1,
+            action: { type: 'block' as const },
+            condition: {
+              urlFilter: `*://*.${site}/*`,
+              resourceTypes: ['main_frame' as const]
+            }
+          },
+          {
+            id: index * 2 + 2,
+            priority: 1,
+            action: { type: 'block' as const },
+            condition: {
+              urlFilter: `*://${site}/*`,
+              resourceTypes: ['main_frame' as const]
+            }
+          }
+        ];
+      });
+
+      console.log('Adding new rules:', rules);
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        addRules: rules
+      });
+      console.log('Rules added successfully');
+    } else {
+      console.log('No rules to add - blocking disabled or no sites');
+    }
+  } catch (error) {
+    console.error('Error updating rules:', error);
   }
 }
-
-// Helper functions for checking if a URL should be blocked
-function shouldBlockUrl(url: string): boolean {
-  if (!currentState.isBlockingEnabled) return false;
-
-  // Check if URL matches any blocked site
-  return currentState.sites.some(site => url.includes(site));
-}
-
-// Listen for web requests
-chrome.webRequest.onBeforeRequest.addListener(
-  (details) => {
-    if (shouldBlockUrl(details.url)) {
-      return { cancel: true };
-    }
-    return { cancel: false };
-  },
-  { urls: ["<all_urls>"] },
-  ["blocking"]
-);

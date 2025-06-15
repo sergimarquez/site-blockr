@@ -5,7 +5,8 @@
     "description": "Block distracting websites to stay focused.",
     "permissions": [
         "storage",
-        "declarativeNetRequest"
+        "declarativeNetRequest",
+        "declarativeNetRequestWithHostAccess"
     ],
     "host_permissions": [
         "<all_urls>"
