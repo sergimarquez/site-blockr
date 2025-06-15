@@ -349,7 +349,7 @@ function App() {
         <button
           onClick={toggleBlocking}
           disabled={focusMode?.isActive}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
             focusMode?.isActive 
               ? 'bg-blue-600 cursor-not-allowed opacity-75' 
               : isBlockingEnabled 
@@ -358,7 +358,7 @@ function App() {
           }`}
         >
           <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-all duration-300 ease-in-out ${
               (focusMode?.isActive || isBlockingEnabled) ? 'translate-x-6' : 'translate-x-1'
             }`}
           />
@@ -429,12 +429,16 @@ function App() {
         {focusMode?.isActive ? (
           <div className="space-y-2">
             <div className="text-center">
-              <div className="text-2xl font-bold">{formatTimeLeft(timeLeft!)}</div>
+              <div className="text-2xl font-bold animate-pulse">{formatTimeLeft(timeLeft!)}</div>
               <div className="text-sm text-gray-600 dark:text-gray-400">remaining</div>
             </div>
             <button
-              onClick={stopFocusMode}
-              className="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              onClick={() => {
+                stopFocusMode();
+                setIsBlockingEnabled(false);
+                updateStorage({ isBlockingEnabled: false });
+              }}
+              className="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-all duration-300 ease-in-out transform hover:scale-105"
             >
               Stop Focus Mode
             </button>
@@ -443,13 +447,13 @@ function App() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => startFocusMode(25)}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-all duration-300 ease-in-out transform hover:scale-105"
             >
               Focus 25m
             </button>
             <button
               onClick={() => startFocusMode(50)}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-all duration-300 ease-in-out transform hover:scale-105"
             >
               Focus 50m
             </button>
@@ -459,22 +463,41 @@ function App() {
 
       {/* Daily Quote at the bottom */}
       {quote && (
-        <div className="mt-8 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700">
+        <div className="mt-8 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700 transition-all duration-300 ease-in-out hover:shadow-md">
           <p className="text-sm italic text-gray-600 dark:text-gray-300 mb-1">"{quote.content}"</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 text-right">— {quote.author}</p>
         </div>
       )}
 
-      {/* Copyright */}
-      <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+      {/* Personal Signature */}
+      <div className="mt-6 flex items-center justify-center space-x-2 text-gray-400 dark:text-gray-500 text-xs">
+        <span className="font-mono text-blue-500 dark:text-blue-400">{"</>"}</span>
+        <span className="font-light tracking-wider text-gray-500 dark:text-gray-400">crafted with</span>
+        <span className="text-red-400 animate-pulse">♥</span>
+        <span className="font-light tracking-wider text-gray-500 dark:text-gray-400">by</span>
         <a 
-          href="https://sergimarquez.com" 
+          href="https://github.com/sergimarquez" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-300"
         >
-          © {new Date().getFullYear()} Sergi Marquez
+          @sergimarquez
         </a>
+      </div>
+
+      {/* Copyright */}
+      <div className="mt-3 text-center text-xs">
+        <p className="text-gray-500 dark:text-gray-400">© {new Date().getFullYear()} SiteBlockr</p>
+        <p className="mt-1">
+          <a 
+            href="https://sergimarquez.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-300"
+          >
+            Sergi Marquez
+          </a>
+        </p>
       </div>
     </div>
   );
