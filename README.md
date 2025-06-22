@@ -54,7 +54,7 @@ npm run build:all
 ```
 
 ### Chrome Web Store
-*Currently under review by Google*
+[Install from Chrome Web Store](https://chromewebstore.google.com/detail/ogicdnegacclceajhgaoehlnidgndllp)
 
 ## 🏗️ Project Structure
 
